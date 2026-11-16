@@ -56,16 +56,22 @@
 ## 4. 原理理解
 1. **`docs/` 和 `site/` 各保存什么？为什么不用手工修改 `site/`？**
 
-   `docs/` 保存手写的 Markdown 源码；`site/` 保存构建出的静态网页产物。产物是自动生成的，手工修改会被下次构建覆盖，所以不需要提交和手工修改。
+   `docs/` 存放编写的 Markdown 文档源码；`site/` 是 MkDocs 基于源码自动编译生成的静态网站资源（html、css、js）。`site/` 是构建产物，每次执行 `mkdocs build` 都会全部重新生成，手动修改里面的内容会在下一次构建时被覆盖，因此不需要手动修改，也一般不提交到版本库。
+
 2. **本次工作流在什么情况下自动运行？**
 
-   在推送到 `main` 分支，并且改动涉及 `docs/`、`mkdocs.yml`、`requirements.txt`、`deploy.yml` 时；或者在 Actions 页面手动点击 `Run workflow` 时。
+   向 `main` 分支执行 push，并改动文件命中 `docs/**`、`mkdocs.yml`、`requirements.txt`、工作流 yaml 文件时才会运行；另外也可以在 Actions 页面手动点击 `Run workflow` 手动触发。
+
 3. **`build` 与 `deploy` 两个任务有什么区别？**
 
-   `build` 任务负责拉取源码、配置 Python 环境、安装依赖、构建并上传产物；`deploy` 任务在 `needs: build` 成功后才执行，负责将产物正式发布到 GitHub Pages。
+   `build`：拉取仓库代码、搭建 Python 环境、安装依赖、执行 `mkdocs build` 生成静态站点，并把站点打包为 pages 制品上传；
+
+   `deploy`：依赖 build 任务成功完成之后才执行，接收 build 上传的站点制品，部署发布到 GitHub Pages 服务。两个任务解耦，构建失败就不会执行发布。
+
 4. **只修改 `report/README.md` 会触发部署吗？为什么？**
 
-   不会。因为 `deploy.yml` 的 `paths` 过滤列表中只包含了 `docs/**` 和配置文件，不包含 `report/` 目录。
+   不会触发部署。因为工作流文件 `deploy.yml` 的 `paths` 过滤规则只监听 `docs/**`、mkdocs 配置等相关文件路径，`report/` 目录不在监听范围内，修改该目录文件不会触发 workflow。
+
 5. **本次方案为何无需创建 `gh-pages` 分支？**
 
-   因为官方推荐使用 `actions/upload-pages-artifact` 和 `actions/deploy-pages` 进行产物直传部署，不需要像传统方案那样把产物推送到额外的分支。
+   旧方案需要把静态文件提交推送到 `gh-pages` 分支，GitHub Pages 从该分支读取网页。新版 `deploy-pages` 采用 artifact 工件机制：构建后上传静态文件作为工件，部署步骤直接读取工件发布，不需要单独维护 `gh-pages` 分支。
